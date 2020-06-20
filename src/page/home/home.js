@@ -31,20 +31,22 @@ class Home extends React.Component {
     this.formPlantField();
   }
 
-  setRemainingBox = (first) => {
+  setRemainingBox = (first, revealedTotal) => {
     if (first) {
       const { size, bombsTotal } = this.state;
       this.setState({ remainingMines: size ** 2 - bombsTotal, boomed: false }); 
     } else {
       const { remainingMines } = this.state;
-      this.setState({ remainingMines: remainingMines - 1})
+      this.setState({ remainingMines: remainingMines - revealedTotal }, () => {
+        this.storeGameProgress();
+      })
     }
   }
 
   formPlantField = () => {
     const { size } = this.state;
     const plantField = [...Array(size)].map(() => {
-      const f = [...Array(size)].map(() => ({ isMine: false, value: 0, isRevealed: false, isBoom: false }))
+      const f = [...Array(size)].map(() => ({ isMine: false, value: 0, isRevealed: false, isBomb: false }))
       return f;
     })
     this.setState({ plantField }, () => {
@@ -59,10 +61,10 @@ class Home extends React.Component {
     while (total > 0) {
       const [locX, locY] =  [this.getRandomPlant(size), this.getRandomPlant(size)];
       const plant = plantField[locX][locY];
-      if (plant.isBoom) {
+      if (plant.isBomb) {
         continue
       }
-      plant.isBoom = true;
+      plant.isBomb = true;
       locs.push(`${locX},${locY}`)
       total -= 1;
     }
@@ -75,7 +77,7 @@ class Home extends React.Component {
     const { bombsLoc, plantField } = this.state;
     const newPlantField = plantField.map((a, aI) => (
       a.map((f, fI) => {
-        if (f.isBoom) {
+        if (f.isBomb) {
           return f
         } else {
           const surroundings = this.getSurroundingCoords(aI, fI);
@@ -95,7 +97,6 @@ class Home extends React.Component {
       this.startGame();
       return;
     }
-
     if (!box.isRevealed) {
       box.isRevealed = true;
       const isBomb = this.checkIsBomb(x, y);
@@ -104,16 +105,11 @@ class Home extends React.Component {
           this.eraseGameProgress();
         })
       } else {
-        if (box.value === 0) {
-          const plant = this.revealZero(x, y, plantField);
-          this.setState({ plantField: plant })
-        } else {
-          this.setState({ plantField }, () => {
-            this.setRemainingBox();
-          });
-        }
+        const [plant, revealedTotal] = this.revealZero(x, y, plantField);
+        this.setState({ plantField: plant }, () => {
+          this.setRemainingBox(false, revealedTotal + 1);
+        })
       }
-      this.storeGameProgress();
     }
   }
 
@@ -122,36 +118,33 @@ class Home extends React.Component {
     return bombsLoc.indexOf(`${x},${y}`) >= 0;
   }
 
-  // FIXME
   revealZero = (x, y, plantField) => {
     const { size } = this.state;
-    let refX = x;
-    while (refX < size) {
-      const px = plantField[refX];
-      if (refX === x) {
-        for (let i = y + 1; i < size; i++) {
-          const pxy = px[i];
-          if (pxy.value === 0) {
-            plantField[refX][i].isRevealed = true
-          } else {
-            refX = size
-            break;
-          }
-        }
+    const boxIdx = x * 10 + y;
+    let revealedTotal = 0;
+    for (let i = boxIdx + 1; i < size**2; i++) {
+      const newBoxIndex = boxIdx + (i - boxIdx)
+      const [aX, aY] = [Math.floor(newBoxIndex / size), newBoxIndex % size];
+      const pxy = plantField[aX][aY];
+      if (!pxy.isBomb && !pxy.isRevealed) {
+        plantField[aX][aY].isRevealed = true
+        revealedTotal += 1
       } else {
-        for (let i = 0; i < size; i++) {
-          const pxy = px[i]
-          if (pxy.value === 0) {
-            plantField[refX][i].isRevealed = true
-          } else {
-            refX = size
-            break;
-          }
-        }
+        break;
       }
-      refX += 1
     }
-    return plantField;
+    for (let j = boxIdx - 1; j >= 0; j--) {
+      const newBoxIndex = boxIdx + (j - boxIdx)
+      const [aX, aY] = [Math.floor(newBoxIndex / size), newBoxIndex % size];
+      const pxy = plantField[aX][aY];
+      if (!pxy.isBomb && !pxy.isRevealed) {
+        plantField[aX][aY].isRevealed = true
+        revealedTotal += 1
+      } else {
+        break;
+      }
+    }
+    return [plantField, revealedTotal];
   }
 
   getRandomPlant = (size) => Math.floor(Math.random() * size)
@@ -180,29 +173,28 @@ class Home extends React.Component {
   }
 
   render() {
-    const { plantField, loading, boomed, remainingMines } = this.state;
+    const { plantField, loading, boomed, bombsTotal, remainingMines } = this.state;
+    const won = remainingMines === 0;
     return (
       <Container>
         <Header>
           {
             !boomed ? (
-              <>
-              <h1>{remainingMines > 0 ? 'Keep Going' : 'Winner'}</h1>
-              <button onClick={this.startGame}>Reset</button>
-              </>
+              <h1>{won ? 'Winner' : 'Keep Going'}</h1>
             ) : (
               <h1>You Lose</h1>
             )
           }
+          <button onClick={this.startGame}>{boomed || won ? "Restart" : "Reset"}</button>
         </Header>
         {
           !loading ? (
             plantField.map((f, fI) => 
               <Field key={`f${fI}`}>
                 {
-                  f.map(({ isBoom, isRevealed, value }, bI) => (
-                    <Box key={`f${fI}b${bI}`} onClick={() => this.mine(fI, bI)}>
-                      {isRevealed || boomed ? isBoom ? "💣" : value : ''}  
+                  f.map(({ isBomb, isRevealed, value }, bI) => (
+                    <Box key={`f${fI}b${bI}`} onClick={() => this.mine(fI, bI)} revealed={isRevealed || boomed}>
+                      {isRevealed || boomed || won ? isBomb ? won ? "🚩" : "💣" : value : ''}  
                     </Box>
                   ))
                 }

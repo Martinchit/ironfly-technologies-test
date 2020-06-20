@@ -1,7 +1,7 @@
 import styled from 'styled-components';
 
 export const Container = styled.div`
-  margin: 10% 5%;
+  margin: 5%;
   width: 400px;
 `;
 
@@ -18,6 +18,7 @@ export const Box = styled.div`
   display: flex;
   justify-content: center;
   align-items: center;
+  cursor: ${({ revealed }) => revealed ? 'not-allowed' : 'pointer' }
 `;
 
 export const Field = styled.div`
