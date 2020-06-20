@@ -1,1 +1,3 @@
-export const size = 10;
+export const size = 30;
+
+export const boxSize = 30;

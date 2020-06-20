@@ -1,8 +1,8 @@
 import styled from 'styled-components';
 
 export const Container = styled.div`
-  margin: 5%;
-  width: 400px;
+  margin: 2% 5%;
+  width: ${({ size, boxSize }) => boxSize * size}px;
 `;
 
 export const Header = styled.div`
@@ -12,8 +12,8 @@ export const Header = styled.div`
 `;
 
 export const Box = styled.div`
-  width: 40px;
-  height: 40px;
+  width: ${({ boxSize }) => boxSize }px;
+  height: ${({ boxSize }) => boxSize }px;
   border: 1px solid black;
   display: flex;
   justify-content: center;

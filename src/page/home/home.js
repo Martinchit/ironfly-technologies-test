@@ -1,13 +1,13 @@
 import React from 'react';
 import { Container, Box, Field, Header } from './component';
-import { size } from '../../shared/config';
+import { size, boxSize } from '../../shared/config';
 
 class Home extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
       size,
-      bombsTotal: 10,
+      bombsTotal: undefined,
       bombsLoc: [],
       remainingMines: undefined,
       plantField: [],
@@ -21,7 +21,9 @@ class Home extends React.Component {
     if (history) {
       this.setState({...JSON.parse(history)});
     } else {
-       this.startGame();
+       this.setState({ bombsTotal: size }, () => {
+         this.startGame();
+       })
     }
   }
 
@@ -57,6 +59,7 @@ class Home extends React.Component {
   plantBombs = () => {
     const { bombsTotal, size, plantField } = this.state;
     let total = bombsTotal;
+    console.log(bombsTotal);
     let locs = [];
     while (total > 0) {
       const [locX, locY] =  [this.getRandomPlant(size), this.getRandomPlant(size)];
@@ -120,7 +123,7 @@ class Home extends React.Component {
 
   revealZero = (x, y, plantField) => {
     const { size } = this.state;
-    const boxIdx = x * 10 + y;
+    const boxIdx = x * size + y;
     let revealedTotal = 0;
     for (let i = boxIdx + 1; i < size**2; i++) {
       const newBoxIndex = boxIdx + (i - boxIdx)
@@ -173,10 +176,10 @@ class Home extends React.Component {
   }
 
   render() {
-    const { plantField, loading, boomed, bombsTotal, remainingMines } = this.state;
+    const { plantField, loading, boomed, remainingMines } = this.state;
     const won = remainingMines === 0;
     return (
-      <Container>
+      <Container size={size} boxSize={boxSize}>
         <Header>
           {
             !boomed ? (
@@ -193,7 +196,12 @@ class Home extends React.Component {
               <Field key={`f${fI}`}>
                 {
                   f.map(({ isBomb, isRevealed, value }, bI) => (
-                    <Box key={`f${fI}b${bI}`} onClick={() => this.mine(fI, bI)} revealed={isRevealed || boomed}>
+                    <Box
+                      key={`f${fI}b${bI}`}
+                      onClick={() => this.mine(fI, bI)} 
+                      revealed={isRevealed || boomed}
+                      boxSize={boxSize}
+                    >
                       {isRevealed || boomed || won ? isBomb ? won ? "🚩" : "💣" : value : ''}  
                     </Box>
                   ))
